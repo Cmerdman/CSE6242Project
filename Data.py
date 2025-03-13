@@ -2,12 +2,14 @@
 # IMPORT REQUIRED LIBRARIES
 # ==========================
 import heapq
+import geopy.distance
 import networkx as nx
 import pandas as pd
 import os
-import googlemaps
-import requests
-import json
+import geopy
+#import googlemaps
+#import requests
+#import json
 from math import radians, sin, cos, sqrt, atan2
 
 # ==========================
@@ -18,7 +20,11 @@ taxi_dir = "Raw"
 output_dir = "Cleaned"
 
 #Coordinate lookup table for pickup and dropoff ids
-coordinate_lookup = pd.read_csv("Debug/taxizonelookup.csv")
+coordinate_lookup = pd.read_csv("Debug/taxitripdict.csv")
+distance_lookup = pd.read_csv("Debug/taxitripdictdist.csv")
+distance_lookup['Estimated_Margin_of_Error'] = distance_lookup['Estimated_Margin_of_Error'].astype(float)
+distance_lookup['Estimated_Dist'] = distance_lookup['Estimated_Dist'].astype(float)
+distance_lookup['startend'] = distance_lookup['startend'].astype(str)
 
 #Preprocessing of Data
 #Data Files (Stored in Data folder):
@@ -246,12 +252,20 @@ def read_Trip_data(year):
         #Drop rows where the pickup or dropoff id is greater than 263 (as this is outside of our range)
         df = df[df['PULocationID'] <= 263]
         df = df[df['DOLocationID'] <= 263]
+        df['startend'] = df['PULocationID'].astype(str) + df['DOLocationID'].astype(str)
+        
+        #ensure both are strings
+        df['startend'] = df['startend'].astype(str)
+        #add distance
+        df = df.merge(distance_lookup, on='startend', how='inner')
+        '''
         df = df.merge(coordinate_lookup, left_on='PULocationID', right_on='zone_id', how='inner')
         df = df.rename(columns={"lat":"pickup_latitude", "long":"pickup_longitude"})
         df = df.merge(coordinate_lookup, left_on='DOLocationID', right_on='zone_id', how='inner')
         df = df.rename(columns={"lat":"dropoff_latitude", "long":"dropoff_longitude"})
         df = df.drop("zone_id_x", axis=1)
         df = df.drop("zone_id_y", axis=1)
+        '''
         #print(df.head())
         #print(df.columns)
         
@@ -261,19 +275,19 @@ def read_Trip_data(year):
     #NOTE: This also defaults to null when store_and_fwd_flag is false in 2009 and 2010
     df['RatecodeID'] = df['RatecodeID'].fillna(0)
     df['store_and_fwd_flag'] = df['store_and_fwd_flag'].fillna('N')
-    df['mta_tax'] = df['mta_tax'].fillna(0)
-    df['extra'] = df['extra'].fillna(0)
-    df['improvement_surcharge'] = df['improvement_surcharge'].fillna(0)
-    df['congestion_surcharge'] = df['congestion_surcharge'].fillna(0)
-    df['airport_fee'] = df['airport_fee'].fillna(0)
+    df['mta_tax'] = df['mta_tax'].fillna(0.0)
+    df['extra'] = df['extra'].fillna(0.0)
+    df['improvement_surcharge'] = df['improvement_surcharge'].fillna(0.0)
+    df['congestion_surcharge'] = df['congestion_surcharge'].fillna(0.0)
+    df['airport_fee'] = df['airport_fee'].fillna(0.0)
     
     #Convert pickup and dropoff times to datetime
     df['tpep_pickup_datetime'] = pd.to_datetime(df['tpep_pickup_datetime'])
     df['tpep_dropoff_datetime'] = pd.to_datetime(df['tpep_dropoff_datetime'])
     #Calculate the trip time in minutes
     df['Trip_Time'] = (df['tpep_dropoff_datetime'] - df['tpep_pickup_datetime']).dt.total_seconds()/60
-    #Convert distance from miles to feet
-    df['trip_distance'] = df['trip_distance']*5280
+    #NOTE: Originally changed to feet, but decided to keep miles
+    #df['trip_distance'] = df['trip_distance']*5280
 
     df = df.reset_index()
 
@@ -422,6 +436,31 @@ def debug_process_taxizone_alltrips():
     #print to new csv
     #print(itter) #Should be 34716
     trip_df.to_csv("Debug/taxitripdict.csv", index=False)
+
+#Get estimated distance for each trip.
+def debug_dist_calulation():
+    trip_df = pd.read_csv("Debug/taxitripdict.csv")
+    trip_df["Estimated_Dist"] = 0.0
+    trip_df["Estimated_Margin_of_Error"] = 0.0
+    trip_df["startend"] = "PLACEHOLDER"
+    for i in range(len(trip_df)):
+        lat1=trip_df.loc[i,"Start_Lat"] 
+        lon1=trip_df.loc[i,"Start_Lon"] 
+        lat2=trip_df.loc[i,"End_Lat"]  
+        lon2=trip_df.loc[i,"End_Lon"] 
+        point1 = (lat1, lon1)
+        point2 = (lat2, lon2)
+        #calculate straight line distance between the lat long start and end.
+        trip_df.loc[i,'Estimated_Dist'] = geopy.distance.geodesic(point1,point2).miles
+        #Calculate a margin of error.  This is caclulated based on the change in 1 degree longitude as latitude changes.  For the latitude of new york, this is about 5 miles per degree latitude.
+        #NOTE: Explination of Calculation: This calculation is only based on the change in latitude because the distance between one degree longitude changes at each latitude while the distance between one degree at a constant latitude is constant.
+        #Distance between one degree latitude is always constant.
+        #NOTE: This will always be positive.  It's impossible to have a negative margin of error.
+        trip_df.loc[i,'Estimated_Margin_of_Error'] = abs(5*(abs(lat1)-abs(lat2)))
+        #For joining on other table: Make a column of start and end id
+        trip_df.loc[i,'startend'] = str(trip_df.loc[i,'Start_ID']) + str(trip_df.loc[i,'End_ID'])
+
+    trip_df.to_csv("Debug/taxitripdictdist.csv", index=False)
 '''
 THIS ALSO DOESN'T WORK
 def debug_Manhattan_Distance():
@@ -525,6 +564,8 @@ def debug_api_Call_on_data():
 '''
 
 def main():
+    
+    '''
     #Generate nodes and edges for graph of New York City streets
     nodes_df, edges_df = read_graphml_to_dataframe()
     #Get the Speed Limit of each street
@@ -542,11 +583,12 @@ def main():
     #Print Nodes and Edges to csv
     nodes_df.to_csv('Debug/Nodes.csv', index=False)
     edges_df.to_csv('Debug/Edges.csv', index=False)
-    
+    '''
     #Debug
     #debug_process_taxizone_data()
     #debug_process_taxizone_alltrips()
-
+    #debug_dist_calulation()
+    
     #Read and clean taxi trip data
     years = [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
     for year in years:
@@ -563,6 +605,7 @@ def main():
         #print data to Cleaned folder
         file = os.path.join(data_dir, output_dir, f'TripData_{year}.csv')
         Trip_df.to_csv(file, index=False)
+
 
 if __name__ == "__main__":
     main()
