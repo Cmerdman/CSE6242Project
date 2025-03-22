@@ -210,11 +210,58 @@ def read_Trip_data(year):
         return None
 
     df = pd.read_parquet(file_path)
-    #Keep only the first two million records so this doesn't take forever
-    df = df.head(2000000)
+    #Distribute data between the three time groups, keeping the original distribution:
+    #NOTE: Distribution: Rush Hour = 42.0700%, Mid Day = 29.8441%, Night Shift= 28.0859% 
+    df['tpep_pickup_datetime'] = pd.to_datetime(df['tpep_pickup_datetime'])
+    df['tpep_dropoff_datetime'] = pd.to_datetime(df['tpep_dropoff_datetime'])
+    df['start_time'] = df['tpep_pickup_datetime'].dt.time
+    df['end_time'] = df['tpep_dropoff_datetime'].dt.time
+    #Assign Groups
+    start = '7:00'
+    end = '9:00'
+    start =pd.to_datetime(start).time()
+    end =pd.to_datetime(end).time()
+    mask = (df['start_time'].between(start, end, inclusive='both')) | (df['end_time'].between(start, end, inclusive='both')) #Where the trip starts or ends in morning rush hour
+    df_rush_hour_1 = df[mask]
+    df_rush_hour_1['Time Zone'] = "Rush Hour"
+    df = df[~mask]
+    #Evening Rush Hour
+    start = '15:00'
+    end = '20:00'
+    start =pd.to_datetime(start).time()
+    end =pd.to_datetime(end).time()
+    mask = (df['start_time'].between(start, end, inclusive='both')) | (df['end_time'].between(start, end, inclusive='both')) #Where the trip starts or ends in evening rush hour
+    df_rush_hour_2 = df[mask]
+    df_rush_hour_2['Time Zone'] = "Rush Hour"
+    df = df[~mask]
+    #Mid Day:
+    start = '9:00'
+    end = '15:00'
+    start =pd.to_datetime(start).time()
+    end =pd.to_datetime(end).time()
+    mask = (df['start_time'].between(start, end, inclusive='both')) | (df['end_time'].between(start, end, inclusive='both')) #Where the trip starts or ends in evening rush hour
+    df_mid_day = df[mask]
+    df_mid_day["Time Zone"] = "Mid Day"
+    df = df[~mask]
+
+
+    #Night Shift (the remaining data):
+    df_night_shift = df[~mask]
+    df_night_shift["Time Zone"] = "Night Shift"
+
+
+    #Keep only the first approx two million records distributed so this doesn't take forever
+    df_rush_hour =  pd.concat([df_rush_hour_1, df_rush_hour_1], ignore_index=True)
+    df_rush_hour = df_rush_hour.head(420700*2)
+    df_mid_day = df_mid_day.head(298441*2)
+    df_night_shift = df_night_shift.head(280859*2)
+    df = pd.concat([df_rush_hour, df_mid_day, df_night_shift], ignore_index=True)
+    #print(len(df))
 
     #NOTE: Data scheme changed after 2010, so we need to process 2010 and 2009's data differently
     #The following IF statement converts the data to the same scheme as the data after 2010
+    #Commented our as we chose to omit 2009 and 2010
+    '''
     if year<2011:
         #Rename the columns to match all years
         df = df.rename(columns={"Start_Lon": "pickup_longitude", "Start_Lat": "pickup_latitude", "End_Lon": "dropoff_longitude", "End_Lat": "dropoff_latitude"})
@@ -240,34 +287,37 @@ def read_Trip_data(year):
 
         #Convert store_and_fwd_flag to Y/N
         df['store_and_fwd_flag'] = df['store_and_fwd_flag'].map({0:'N', 1:'Y'})
-
+    '''
     #For 2011 onward, we must add the latitude and longitude of pickup and dropoff locations
-    else:
-        #They made a typo naming the airport fee column for 2024 only
-        if year == 2024:
-            df = df.rename(columns={"Airport_fee":"airport_fee"})
+    #else:
+    #They made a typo naming the airport fee column for 2024 only
+    if year == 2024:
+        df = df.rename(columns={"Airport_fee":"airport_fee"})
 
-        #Add the latitude and longitude of the pickup and dropoff locations
-        #NOTE: This function works because the coordinate lookup data is stored in order of the LocationID.  However, because python zero indexes, we have to subtract 1 from the ids.
-        #Drop rows where the pickup or dropoff id is greater than 263 (as this is outside of our range)
-        df = df[df['PULocationID'] <= 263]
-        df = df[df['DOLocationID'] <= 263]
-        df['startend'] = df['PULocationID'].astype(str) + df['DOLocationID'].astype(str)
-        
-        #ensure both are strings
-        df['startend'] = df['startend'].astype(str)
-        #add distance
-        df = df.merge(distance_lookup, on='startend', how='inner')
-        '''
-        df = df.merge(coordinate_lookup, left_on='PULocationID', right_on='zone_id', how='inner')
-        df = df.rename(columns={"lat":"pickup_latitude", "long":"pickup_longitude"})
-        df = df.merge(coordinate_lookup, left_on='DOLocationID', right_on='zone_id', how='inner')
-        df = df.rename(columns={"lat":"dropoff_latitude", "long":"dropoff_longitude"})
-        df = df.drop("zone_id_x", axis=1)
-        df = df.drop("zone_id_y", axis=1)
-        '''
-        #print(df.head())
-        #print(df.columns)
+    #Add the latitude and longitude of the pickup and dropoff locations
+    #NOTE: This function works because the coordinate lookup data is stored in order of the LocationID.  However, because python zero indexes, we have to subtract 1 from the ids.
+    #Drop rows where the pickup or dropoff id is greater than 263 (as this is outside of our range)
+    df = df[df['PULocationID'] <= 263]
+    df = df[df['DOLocationID'] <= 263]
+    #print(len(df))
+    df['startend'] = df['PULocationID'].astype(str) + df['DOLocationID'].astype(str)
+    
+    #ensure both are strings
+    df['startend'] = df['startend'].astype(str)
+    #add distance
+    #NOTE: Removed due to inaccuracies in estimating distance due to use of zones
+    #df = df.merge(distance_lookup, on='startend', how='inner')
+    #print(len(df))
+    '''
+    df = df.merge(coordinate_lookup, left_on='PULocationID', right_on='zone_id', how='inner')
+    df = df.rename(columns={"lat":"pickup_latitude", "long":"pickup_longitude"})
+    df = df.merge(coordinate_lookup, left_on='DOLocationID', right_on='zone_id', how='inner')
+    df = df.rename(columns={"lat":"dropoff_latitude", "long":"dropoff_longitude"})
+    df = df.drop("zone_id_x", axis=1)
+    df = df.drop("zone_id_y", axis=1)
+    '''
+    #print(df.head())
+    #print(df.columns)
         
 
     #Change null values to 0 for RatecodeID, store_and_fwd_flag, mta_tax, extra, improvement_surcharge, congestion_surcharge, and airport_fee
@@ -282,14 +332,18 @@ def read_Trip_data(year):
     df['airport_fee'] = df['airport_fee'].fillna(0.0)
     
     #Convert pickup and dropoff times to datetime
-    df['tpep_pickup_datetime'] = pd.to_datetime(df['tpep_pickup_datetime'])
-    df['tpep_dropoff_datetime'] = pd.to_datetime(df['tpep_dropoff_datetime'])
+    #df['tpep_pickup_datetime'] = pd.to_datetime(df['tpep_pickup_datetime'])
+    #df['tpep_dropoff_datetime'] = pd.to_datetime(df['tpep_dropoff_datetime'])
     #Calculate the trip time in minutes
     df['Trip_Time'] = (df['tpep_dropoff_datetime'] - df['tpep_pickup_datetime']).dt.total_seconds()/60
+    #print(len(df))
     #NOTE: Originally changed to feet, but decided to keep miles
     #df['trip_distance'] = df['trip_distance']*5280
 
     df = df.reset_index()
+
+    #Normalize Data
+    df = normalize_data(df)
 
     return df
 
@@ -390,6 +444,60 @@ def preprocess_add_traffic_to_edges(edges_df, traffic_df):
     edges_df = edges_df.fillna(1.0)
     return edges_df
 
+#Normalizes each of the following columns of the dataset: passenger_count, trip_distance, fare_amount, extra, tip_amount, tolls_amount,	total_amount, congestion_surcharge, airport_fee, Trip_Time
+#Grouped by start and end zones (column startend)
+#NOTE: This uses mean normalization.  We could try min max normalization.
+def normalize_data(df):
+    df_means = df.groupby('startend').agg({'passenger_count': 'mean', 'trip_distance': 'mean', 'fare_amount': 'mean', 'extra': 'mean', 'tip_amount': 'mean', 'tolls_amount': 'mean', 'total_amount':'mean', 'congestion_surcharge': 'mean', 'airport_fee': 'mean', 'Trip_Time': 'mean'})
+    df_means = df_means.fillna(0)
+    #print(df_means)
+    df_stds = df.groupby('startend').agg({'passenger_count': 'std', 'trip_distance': 'std', 'fare_amount': 'std', 'extra': 'std', 'tip_amount': 'std', 'tolls_amount': 'std', 'total_amount':'std', 'congestion_surcharge': 'std', 'airport_fee': 'std', 'Trip_Time': 'std'})
+    df_stds = df_stds.fillna(0)
+    #print(df_stds)
+
+    #NOTE: Column_x is means, Column_y is standard deviations
+    df_grouped = df_means.merge(df_stds, on='startend', how="inner")
+    #print(df_grouped)
+
+    df = df.merge(df_grouped, on='startend', how="inner")
+    #Calculate normalized variables:
+    df['norm_passenger_count'] = (df['passenger_count']-df['passenger_count_x'])/df['passenger_count_y']
+    df['norm_trip_distance'] = (df['trip_distance']-df['trip_distance_x'])/df['trip_distance_y']
+    df['norm_fare_amount'] = (df['fare_amount']-df['fare_amount_x'])/df['fare_amount_y']
+    df['norm_extra'] = (df['extra']-df['extra_x'])/df['extra_y']
+    df['norm_tip_amount'] = (df['tip_amount']-df['tip_amount_x'])/df['tip_amount_y']
+    df['norm_tolls_amount'] = (df['tolls_amount']-df['tolls_amount_x'])/df['tolls_amount_y']
+    df['norm_total_amount'] = (df['total_amount']-df['total_amount_x'])/df['total_amount_y']
+    df['norm_congestion_surcharge'] = (df['congestion_surcharge']-df['congestion_surcharge_x'])/df['congestion_surcharge_y']
+    df['norm_airport_fee'] = (df['airport_fee']-df['airport_fee_x'])/df['airport_fee_y']
+    df['norm_Trip_Time'] = (df['Trip_Time']-df['Trip_Time_x'])/df['Trip_Time_y']
+
+    #print(df.keys())
+
+    #Drop extra columns
+    df = df.drop("passenger_count_x", axis=1)
+    df = df.drop("passenger_count_y", axis=1)
+    df = df.drop("trip_distance_x", axis=1)
+    df = df.drop("trip_distance_y", axis=1)
+    df = df.drop("fare_amount_x", axis=1)
+    df = df.drop("fare_amount_y", axis=1)
+    df = df.drop("extra_x", axis=1)
+    df = df.drop("extra_y", axis=1)
+    df = df.drop("tip_amount_x", axis=1)
+    df = df.drop("tip_amount_y", axis=1)
+    df = df.drop("tolls_amount_x", axis=1)
+    df = df.drop("tolls_amount_y", axis=1)
+    df = df.drop("total_amount_x", axis=1)
+    df = df.drop("total_amount_y", axis=1)
+    df = df.drop("congestion_surcharge_x", axis=1)
+    df = df.drop("congestion_surcharge_y", axis=1)
+    df = df.drop("airport_fee_x", axis=1)
+    df = df.drop("airport_fee_y", axis=1)
+    df = df.drop("Trip_Time_x", axis=1)
+    df = df.drop("Trip_Time_y", axis=1)
+
+    return df
+
 def debug_process_taxizone_data():
     """
     Reads the Taxi Zone Data file and returns the Taxi Zone Data as a Pandas DataFrame."
@@ -461,6 +569,78 @@ def debug_dist_calulation():
         trip_df.loc[i,'startend'] = str(trip_df.loc[i,'Start_ID']) + str(trip_df.loc[i,'End_ID'])
 
     trip_df.to_csv("Debug/taxitripdictdist.csv", index=False)
+
+#Gets the distrubtion of data between our three timzones.
+def debug_data_distribution(year):
+    file_path = os.path.join(data_dir,taxi_dir,f'yellow_tripdata_{year}-01.parquet')
+    df = pd.read_parquet(file_path)
+    df = df[['tpep_pickup_datetime','tpep_dropoff_datetime']]
+    length = len(df)
+    #start = '7:00'
+    #start =pd.to_datetime(start).time()
+    #print(start)
+    
+    #get hour of day for each trip
+    df['tpep_pickup_datetime'] = pd.to_datetime(df['tpep_pickup_datetime'])
+    df['tpep_dropoff_datetime'] = pd.to_datetime(df['tpep_dropoff_datetime'])
+    df['start_time'] = df['tpep_pickup_datetime'].dt.time
+    df['end_time'] = df['tpep_dropoff_datetime'].dt.time
+    #print(df.head(2))
+
+    #Get the number of each time group:
+    #Morning Rush Hour:
+    #NOTE: We consider any trip that starts or ends in rush hour time to be part of rush hour, as it would be skewed by rush hour traffic.
+    start = '7:00'
+    end = '9:00'
+    start =pd.to_datetime(start).time()
+    end =pd.to_datetime(end).time()
+    mask = (df['start_time'].between(start, end, inclusive='both')) | (df['end_time'].between(start, end, inclusive='both')) #Where the trip starts or ends in morning rush hour
+    df_rush_hour_1 = df[mask]
+    df = df[~mask]
+    #Evening Rush Hour
+    start = '15:00'
+    end = '20:00'
+    start =pd.to_datetime(start).time()
+    end =pd.to_datetime(end).time()
+    mask = (df['start_time'].between(start, end, inclusive='both')) | (df['end_time'].between(start, end, inclusive='both')) #Where the trip starts or ends in evening rush hour
+    df_rush_hour_2 = df[mask]
+    df = df[~mask]
+
+    #Mid Day:
+    start = '9:00'
+    end = '15:00'
+    start =pd.to_datetime(start).time()
+    end =pd.to_datetime(end).time()
+    mask = (df['start_time'].between(start, end, inclusive='both')) | (df['end_time'].between(start, end, inclusive='both')) #Where the trip starts or ends in evening rush hour
+    df_mid_day = df[mask]
+    df = df[~mask]
+
+
+    #Night Shift (the remaining data):
+    df_night_shift = df[~mask]
+
+
+    #Get the distribution of each group
+    #Lengths of each group:
+    length_rush_hour = len(df_rush_hour_1) + len(df_rush_hour_2) #+ len(df_rush_hour_3) + len(df_rush_hour_4)
+    length_mid_day = len(df_mid_day)
+    length_night_shift = len(df_night_shift)
+
+    print("Total Number of trips")
+    print(f"Total {length}")
+    print(f"Rush Hour: {length_rush_hour}")
+    print(f"Mid Day: {length_mid_day}")
+    print(f"Night Shift: {length_night_shift}")
+
+    print("//////////////////////////////////")
+
+    print("Percentage Distribution of Data")
+    print(f"Rush Hour: {length_rush_hour/length}")
+    print(f"Mid Day: {length_mid_day/length}")
+    print(f"Night Shift: {length_night_shift/length}")
+
+    return None
+    
 '''
 THIS ALSO DOESN'T WORK
 def debug_Manhattan_Distance():
@@ -584,28 +764,32 @@ def main():
     nodes_df.to_csv('Debug/Nodes.csv', index=False)
     edges_df.to_csv('Debug/Edges.csv', index=False)
     '''
-    #Debug
+
+    #Debuging functions
+    year = 2024
     #debug_process_taxizone_data()
     #debug_process_taxizone_alltrips()
     #debug_dist_calulation()
+    #debug_data_distribution(year)
     
     #Read and clean taxi trip data
-    years = [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
-    for year in years:
-        #Debugging print
-        print(f"Processing Data for year {year}")
-        #Get Trip data for each year
-        Trip_df = read_Trip_data(year)
-        #Clean Trip Data
-        Trip_df = preprocess_remove_na(Trip_df)
-        #Remove trips that are out of bounds.
-        #NOTE: All region ids for 2011 onward are automatically in bounds, so we do not have to further process.
-        if year <2011:
-            Trip_df = preprocess_remove_out_of_bound(Trip_df)
-        #print data to Cleaned folder
-        file = os.path.join(data_dir, output_dir, f'TripData_{year}.csv')
-        Trip_df.to_csv(file, index=False)
-
+    
+    #years = [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
+    #for year in years:
+    #Debugging print
+    print(f"Processing Data for year {year}")
+    #Get Trip data for each year
+    Trip_df = read_Trip_data(year)
+    #Clean Trip Data
+    Trip_df = preprocess_remove_na(Trip_df)
+    #Remove trips that are out of bounds.
+    #NOTE: All region ids for 2011 onward are automatically in bounds, so we do not have to further process.
+    if year <2011:
+        Trip_df = preprocess_remove_out_of_bound(Trip_df)
+    #print data to Cleaned folder
+    file = os.path.join(data_dir, output_dir, f'TripData_{year}.csv')
+    Trip_df.to_csv(file, index=False)
+    
 
 if __name__ == "__main__":
     main()
