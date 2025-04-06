@@ -1,0 +1,15 @@
+Link to raw Dataset: https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
+For this project, download the Yellow Taxi Trip Records parquet files for January of 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, and 2024.
+Alternatively, download the preprocessed analyzed data using the link below.
+
+Link to just the analyzed Data: https://drive.google.com/file/d/1R6pNJQO8p5SQQ8RU68xBpO6DRd55ARWV/view?usp=sharing
+Analyzed data should be stored in the Data folder in a subfolder called Analyzed, such that the data is found in
+Project/Data/Analyzed
+NOTE: Downloading the analyzed data allows you to stick running Data.py and DBSCAN.py to preprocess the raw data.  These scripts take six hours to run, so it is recommended to download the analyzed data.
+
+
+Other Datasets considered but ultimately unused:
+Graph node rpresentation of New York City: https://www.kaggle.com/datasets/crailtap/street-network-of-new-york-in-graphml
+Speed Limits for each street in New York City.  From https://data.cityofnewyork.us/Transportation/VZV_Speed-Limits/7n5j-865y 
+Traffic Data: https://data.cityofnewyork.us/Transportation/Traffic-Volume-Counts/btm5-ppia/about_data
+Accident Data:https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95/about_data
