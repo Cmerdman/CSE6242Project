@@ -6,7 +6,8 @@ Required Data: Data cleaned and analyzed using DBSCAN: https://drive.google.com/
 Download and unzip the file and store in the Data/Analyzed subfolder.
 
 To run the visualization:
-[CAMERON/SAIF, ADD INFO HERE!!!]
+Requires the analyzed data to be downloaded and the paths to that as well as the shape file data to be updated. From there, the required packages need to be downloaded and the notebook run in its entirety. Unless manually changed, this link will take you to your local dashboard instance. http://127.0.0.1:8053/
+[SAIF, ADD INFO HERE!!!]
 
 
 (Optional, advised against)
@@ -23,7 +24,7 @@ Project Folder Structure:
 Project folder contains the code required for the project and subfolders for the data and linear regression models.
  - Code Data.py is utilized to clean raw data files.
  - Code DBSCAN.py is used to analyze and cluster the cleaned data files.
- - Code [NAME OF CODE] is used to run the visualization.
+ - Code Visualization_dashboard is used to run the visualization.
  - Environment.yaml is used to set the python environment for the project.
 Project folder contains the following subfolders:
  - Data.  Used to store the data for this project.  
