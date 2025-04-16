@@ -380,6 +380,8 @@ def regression(year):
 
   #Train to calculate trip time
   dftemp = df_normal[df_normal['Trip_Time'] <= 60]
+  dftemp = dftemp[dftemp['Trip_Time'] >= 0]
+  dftemp.dropna()
   X = dftemp[['PULocationID', 'DOLocationID', 'Time Zone', 'trip_distance']]
   y = dftemp['Trip_Time']
   #replace 0 minutes with 6 seconds
