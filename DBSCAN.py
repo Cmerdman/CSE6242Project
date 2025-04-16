@@ -357,12 +357,16 @@ def regression(year):
   #split into train and test set
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-  #Train model
+  #train model
   model = MLPRegressor(max_iter=100, hidden_layer_sizes=(100, 50), activation='relu', solver='adam', random_state=42) 
   model.fit(X_train, y_train)
 
   #test model
   y_pred = model.predict(X_test)
+  #convert back to normal
+  y_pred = np.exp(y_pred)
+  y_test = np.exp(y_test)
+  print(y_pred)
   mse = mean_squared_error(y_test, y_pred)
   print(f"Mean Squared Error for fare calculation for {year}: {mse}")
   #accuracy
@@ -378,7 +382,11 @@ def regression(year):
   dftemp = df_normal[df_normal['Trip_Time'] <= 60]
   X = dftemp[['PULocationID', 'DOLocationID', 'Time Zone', 'trip_distance']]
   y = dftemp['Trip_Time']
-  #Convert time
+  #replace 0 minutes with 6 seconds
+  y = y.replace(0, 0.1)
+  #convert y to log scale
+  y = np.log(y)
+  #Convert shift
   X = X.replace("Rush Hour", 1)
   X = X.replace("Mid Day", 2)
   X = X.replace("Night Shift", 3)
@@ -392,6 +400,9 @@ def regression(year):
 
   #test model
   y_pred = model.predict(X_test)
+  #convert back to normal 
+  y_pred = np.exp(y_pred)
+  y_test = np.exp(y_test)
   mse = mean_squared_error(y_test, y_pred)
   print(f"Mean Squared Error for time calculation for {year}: {mse}")
   #accuracy
