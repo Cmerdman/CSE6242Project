@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPRegressor
 import pickle
 import matplotlib.pyplot as plt #Used for Debug plots
 import os
@@ -340,9 +341,13 @@ def regression(year):
   df_normal = df[df['cluster']>-1]
 
   #Train to calculate fare amount on pickup id, dropoff id, distance, and time of day
-  X = df_normal[['PULocationID', 'DOLocationID', 'trip_distance', 'Time Zone']]
-  y = df_normal['fare_amount']
-  #Convert time zone to numeric representation
+  df_normal['fare_per_mile'] = df_normal['fare_amount']/df_normal['trip_distance']
+  dftemp = df_normal[df_normal['fare_per_mile'] <= 15]
+  X = dftemp[['PULocationID', 'DOLocationID', 'Time Zone', 'trip_distance']]
+  #y is fare per mile
+  y = dftemp['fare_per_mile']
+
+  #Convert shift to numeric representation
   X = X.replace("Rush Hour", 1)
   X = X.replace("Mid Day", 2)
   X = X.replace("Night Shift", 3)
@@ -351,7 +356,7 @@ def regression(year):
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
   #Train model
-  model = LinearRegression()
+  model = MLPRegressor(max_iter=100, hidden_layer_sizes=(100, 50), activation='relu', solver='adam', random_state=42) 
   model.fit(X_train, y_train)
 
   #test model
@@ -368,8 +373,9 @@ def regression(year):
     pickle.dump(model, file)
 
   #Train to calculate trip time
-  X = df_normal[['PULocationID', 'DOLocationID', 'trip_distance', 'Time Zone']]
-  y = df_normal['Trip_Time']
+  dftemp = df_normal[df_normal['Trip_Time'] <= 60]
+  X = dftemp[['PULocationID', 'DOLocationID', 'Time Zone', 'trip_distance']]
+  y = dftemp['Trip_Time']
   #Convert time
   X = X.replace("Rush Hour", 1)
   X = X.replace("Mid Day", 2)
@@ -379,7 +385,7 @@ def regression(year):
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
   #Train model
-  model = LinearRegression()
+  model = MLPRegressor(max_iter=100, hidden_layer_sizes=(100, 50), activation='relu', solver='adam', random_state=42) 
   model.fit(X_train, y_train)
 
   #test model
