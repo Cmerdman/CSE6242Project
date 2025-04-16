@@ -346,6 +346,8 @@ def regression(year):
   X = dftemp[['PULocationID', 'DOLocationID', 'Time Zone', 'trip_distance']]
   #y is fare per mile
   y = dftemp['fare_per_mile']
+  #convert y to log scale
+  y = np.log(y)
 
   #Convert shift to numeric representation
   X = X.replace("Rush Hour", 1)
