@@ -2,12 +2,14 @@ ReadMe.txt For Data Visualization Project:
 
 Please set your python environment utilizing the provided environment.yaml file.
 
+(Recommended)
 Required Data: Data cleaned and analyzed using DBSCAN: https://drive.google.com/file/d/1R6pNJQO8p5SQQ8RU68xBpO6DRd55ARWV/view?usp=sharing
 Download and unzip the file and store in the Data/Analyzed subfolder.
 
 To run the visualization:
 Requires the analyzed data to be downloaded and the paths to that as well as the shape file data to be updated. From there, the required packages need to be downloaded and the notebook run in its entirety. Unless manually changed, this link will take you to your local dashboard instance. http://127.0.0.1:8053/
-[SAIF, ADD INFO HERE!!!]
+
+**In order to use the Multilayer perceptron map, You must create an account with OpenRouteService. To find more information, please visit [https://api.openrouteservice.org](this link). You must sign up for an account with them, and obtain an API key. Once this is completed, please place the API key within the desginated variable in Visualization_dashboard.ipynb. The variable is named 'ors_key'.**
 
 
 (Optional, advised against)
@@ -17,7 +19,6 @@ Store downlaoded parquet files in the Data/Raw subfolder.
 Run Data.py to clean the data.  Cleaned data is stored in the Data/Cleaned subfolder.  This process takes approximately 2 hours.
 Run DBSCAN.py to analyze and cluster the data.  Clustered data is stored in the Data/Analyzed subfolder.  This process takes approximately 4 hours.
 NOTE: It is advized to grab the cleaned an analyzed data from the link provided at the top of this document to avoid the six hours needed for preprocessing.
-
 
 
 Project Folder Structure:
