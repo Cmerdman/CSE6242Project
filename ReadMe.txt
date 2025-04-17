@@ -23,7 +23,6 @@ Project folder contains the code required for the project and subfolders for the
  - Code Data.py is utilized to clean raw data files.
  - Code DBSCAN.py is used to analyze and cluster the cleaned data files.
  - Code Visualization_dashboard is used to run the visualization.
- - Environment.yaml is used to set the python environment for the project.
 Project folder contains the following subfolders:
  - Data.  Used to store the data for this project.  
  - Models.  Used to store the trained linear regression models for this project.
