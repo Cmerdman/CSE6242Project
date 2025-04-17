@@ -1,7 +1,5 @@
 ReadMe.txt For Data Visualization Project:
 
-Please set your python environment utilizing the provided environment.yaml file.
-
 (Recommended)
 Required Data: Data cleaned and analyzed using DBSCAN: https://drive.google.com/file/d/1R6pNJQO8p5SQQ8RU68xBpO6DRd55ARWV/view?usp=sharing
 Download and unzip the file and store in the Data/Analyzed subfolder.
