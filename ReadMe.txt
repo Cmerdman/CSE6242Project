@@ -9,8 +9,7 @@ Download and unzip the file and store in the Data/Analyzed subfolder.
 To run the visualization:
 Requires the analyzed data to be downloaded and the paths to that as well as the shape file data to be updated. From there, the required packages need to be downloaded and the notebook run in its entirety. Unless manually changed, this link will take you to your local dashboard instance. http://127.0.0.1:8053/
 
-**In order to use the Multilayer perceptron map, You must create an account with OpenRouteService. To find more information, please visit [https://api.openrouteservice.org](this link). You must sign up for an account with them, and obtain an API key. Once this is completed, please place the API key within the desginated variable in Visualization_dashboard.ipynb. The variable is named 'ors_key'.**
-
+In order to use the Multilayer perceptron map, You must create an account with OpenRouteService. To find more information, please visit https://api.openrouteservice.org. You must sign up for an account with them, and obtain an API key. Once this is completed, please place the API key within the desginated variable in Visualization_dashboard.ipynb. The variable is named 'ors_key'.
 
 (Optional, advised against)
 To preprocess the raw taxi trip data:
